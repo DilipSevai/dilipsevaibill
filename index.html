@@ -6,6 +6,7 @@
     <title>Invoice Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script> <!-- AutoTable -->
     <style>
         /* General Styles */
         body {
@@ -102,7 +103,7 @@
             <thead>
                 <tr>
                     <th>Product</th>
-                    <th>Quantity</th>
+                    <th>Quantity(kg)</th>
                     <th>Price (₹)</th>
                     <th>Total (₹)</th>
                 </tr>
@@ -120,7 +121,7 @@
                                 <td><input type="text" value="${products[i]}" /></td>
                                 <td><input type="number" value="1" min="1" oninput="calculateRowTotal(this)"></td>
                                 <td><input type="number" value="${(Math.random() * 10000 + 5000).toFixed(2)}" oninput="calculateRowTotal(this)"></td>
-                                <td class="row-total"></td>
+                                <td class="row-total">₹0.00</td>
                             </tr>
                         `);
                     }
@@ -129,7 +130,7 @@
             <tfoot>
                 <tr class="total-row">
                     <td colspan="3">Total Amount (₹):</td>
-                    <td id="grandTotal">0.00</td>
+                    <td id="grandTotal">₹0.00</td>
                 </tr>
             </tfoot>
         </table>
@@ -138,61 +139,57 @@
     <button onclick="downloadPDF()">Download PDF</button>
 
     <script>
-        function calculateRowTotal(input) {
-            let row = input.parentElement.parentElement;
-            let quantity = row.cells[1].querySelector("input").value;
-            let price = row.cells[2].querySelector("input").value;
-            let total = (quantity * price).toFixed(2);
-            row.cells[3].innerText = total;
-            updateGrandTotal();
-        }
-
-        function updateGrandTotal() {
-            let totalCells = document.querySelectorAll(".row-total");
-            let grandTotal = 0;
-            totalCells.forEach(cell => {
-                grandTotal += parseFloat(cell.innerText || 0);
-            });
-            document.getElementById("grandTotal").innerText = grandTotal.toFixed(2);
-        }
-
         function downloadPDF() {
-            const { jsPDF } = window.jspdf;
-            let doc = new jsPDF();
+    const { jsPDF } = window.jspdf;
+    let doc = new jsPDF();
 
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.text("Invoice", 90, 15);
+    // Set Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("sevai bill invoice", 90, 15);
 
-            let data = [];
-            let rows = document.querySelectorAll("#invoiceTable tbody tr");
-            
-            rows.forEach(row => {
-                let product = row.cells[0].querySelector("input").value;
-                let quantity = row.cells[1].querySelector("input").value;
-                let price = row.cells[2].querySelector("input").value;
-                let total = row.cells[3].innerText;
-                data.push([product, quantity, `₹${price}`, `₹${total}`]);
-            });
+    let data = [];
+    let rows = document.querySelectorAll("#invoiceTable tbody tr");
 
-            let grandTotal = document.getElementById("grandTotal").innerText;
+    rows.forEach(row => {
+        let product = row.cells[0].querySelector("input").value;
+        let quantity = row.cells[1].querySelector("input").value;
+        let price = parseFloat(row.cells[2].querySelector("input").value).toFixed(2);
+        let total = parseFloat(row.cells[3].innerText.replace("₹", "").trim()).toFixed(2);
 
-            doc.autoTable({
-                head: [["Product", "Quantity", "Price (₹)", "Total (₹)"]],
-                body: data,
-                startY: 25
-            });
+        // Push data without ₹
+        data.push([product, quantity, price, total]);
+    });
 
-            doc.setFont("helvetica", "bold");
-            doc.text(`Total Amount: ₹${grandTotal}`, 140, doc.lastAutoTable.finalY + 10);
+    let grandTotal = document.getElementById("grandTotal").innerText.replace("₹", "").trim();
 
-            doc.save("Invoice.pdf");
+    // Generate Table
+    doc.autoTable({
+        head: [["Product", "Quantity(kg)", "Price", "Total"]],
+        body: data,
+        startY: 25,
+        theme: "grid",
+        styles: {
+            fontSize: 12,
+            cellPadding: 3,
+        },
+        headStyles: {
+            fillColor: [26, 115, 232], // Blue header
+            textColor: [255, 255, 255],
+            fontSize: 14
         }
+    });
 
-        // Initial Calculation
-        document.querySelectorAll("input[type='number']").forEach(input => calculateRowTotal(input));
+    // Add Grand Total (Without ₹)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`Total Amount: ${grandTotal}`, 140, doc.lastAutoTable.finalY + 10);
+
+    doc.save("sevaibillinvoice.pdf");
+}
+
+
     </script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </body>
 </html>
